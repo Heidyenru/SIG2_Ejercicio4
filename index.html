@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8" />
+
+<head>
+	<!-- Leaflet -->
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+
+	<!-- Capas -->
+	<script type="text/javascript" src="Capas/Pais.js"></script>
+	<script type="text/javascript" src="Capas/Ciudad.js"></script>
+	<script type="text/javascript" src="Capas/Departamento.js"></script>
+
+	<!-- Markercluster -->
+	<script type="text/javascript" src="Controles/leaflet.markercluster.js"></script>
+	<link rel="stylesheet" href="Controles/MarkerCluster.Default.css" />
+	<link rel="stylesheet" href="Controles/MarkerCluster.css" />
+
+	<!-- MiniMap -->
+	<script type="text/javascript" src="Controles/Control.MiniMap.min.js"></script>
+	<link rel="stylesheet" href="Controles/Control.MiniMap.min.js" />
+
+	<style>
+		#map {
+			width: 100%;
+			height: 800px;
+			box-shadow: 5px 5px 5px #888;
+		}
+	</style>
+
+</head>
+
+<body>
+
+	<div id="map"></div>
+
+	<script>
+
+		//OpenStreetMap
+		var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a>'
+				+ 'contributors', maxZoom: 18
+		});
+
+		//Estilos
+		var ciudadEstilo = {
+			'color': "#0CFF00",
+			'weight': 2,
+			'opacity': 0.6
+		};
+
+		//Función Colores Pais
+		function getColorPais(d) {
+			return d > 100000000 ? '#800026' :
+				d > 50000000 ? '#BD0026' :
+					d > 20000000 ? '#E31A1C' :
+						d > 10000000 ? '#FC4E2A' :
+							d > 5000000 ? '#FD8D3C' :
+								d > 2000000 ? '#FEB24C' :
+									d > 1000000 ? '#FED976' :
+										'#FFEDA0';
+		};
+
+		//Función Estilos Pais
+		function paisesEstilo(feature) {
+			return {
+				fillColor: getColorPais(feature.properties.pop_est),
+				weight: 2,
+				opacity: 1,
+				color: 'white',
+				dashArray: '3',
+				fillOpacity: 0.7
+			};
+		}
+
+		//Funcion Colores Departamento
+		function getColorDepartamento(d) {
+			return d > 45000000000 ? '#64731E' :
+				d > 25000000000 ? '#77942E' :
+					d > 2000000000 ? '#BAAD34' :
+						d > 1000000000 ? '#95B634' :
+							d > 50000000 ? '#C3D48B' :
+								d > 25000000 ? '#DBE4A9' :
+									'#EAEFC8';
+		};
+
+		//Función Estilo Departamento
+		function departamentoEstilo(feature) {
+			return {
+				fillColor: getColorDepartamento(feature.properties.SHAPE_AREA),
+				weight: 2,
+				opacity: 1,
+				color: 'white',
+				dashArray: '3',
+				fillOpacity: 0.7
+			};
+		}
+
+		function popup(feature, layer) {
+			if (feature.properties && feature.properties.name) {
+				layer.bindPopup(feature.properties.name);
+			}
+		}
+		function popupDep(feature, layer) {
+			if (feature.properties && feature.properties.NOM_DEPART) {
+				layer.bindPopup(feature.properties.NOM_DEPART + '<br>Longitud:' + feature.properties.SHAPE_LEN);
+			}
+		}
+
+
+		var icon_Capital = L.icon({
+			iconUrl: 'https://cdn.icon-icons.com/icons2/1483/PNG/128/wifihome_102155.png',
+			iconSize: [20, 20],
+			popupAnchor: [-1, -10]
+		});
+
+		var icon_Ciudad = L.icon({
+			iconUrl: 'https://cdn.icon-icons.com/icons2/2093/PNG/128/park_architecture_and_city_leisure_trees_landscape_nature_icon_128584.png',
+			iconSize: [20, 20],
+			popupAnchor: [-1, -10]
+		});
+
+
+		var markers = L.markerClusterGroup();
+
+		function estiloMarker(feature, latlng) {
+			return feature.properties.capital == 'S' ? markers.addLayer(L.marker(latlng, {
+				icon: icon_Capital,
+				draggable: false,
+				title: "Clic para el Detalle"
+			})).bindPopup('<b>Ciudad: </b> ' + feature.properties.capital) :
+				markers.addLayer(L.marker(latlng, {
+					icon: icon_Ciudad,
+					draggable: false,
+					title: "Clic para el Detalle"
+				})).bindPopup('<b>Ciudad: </b> ' + feature.properties.ciudad);
+		};
+
+
+		var map = L.map('map', {
+			center: [1.614433, -75.609455],
+			zoom: 5,
+			layers: [osm],
+
+			scrollWheelZoom: true
+		});
+
+		map.addLayer(markers);
+
+
+		//Variables Capas
+		var paises = L.geoJson(Pais,
+			{
+				style: paisesEstilo,
+				onEachFeature: popup
+
+			}
+		).addTo(map);
+
+		var departamentos = L.geoJson(Departamento,
+			{
+				style: departamentoEstilo,
+				onEachFeature: popupDep
+
+			}
+		).addTo(map);
+
+		var ciudades = L.geoJson(Ciudad,
+			{
+				style: ciudadEstilo,
+				pointToLayer: estiloMarker
+
+			}
+		).addTo(map);
+
+
+		//MiniMapa
+		var osmMiniMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a>'
+				+ 'contributors', maxZoom: 18
+		});
+
+		var miniMap = new L.Control.MiniMap(osmMiniMap,
+			{
+				toggleDisplay: true,
+				minimized: false
+		}).addTo(map);
+
+
+		//Control Capas
+		var baseMaps = {
+            "<img src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Openstreetmap_logo.svg/1200px-Openstreetmap_logo.svg.png' height=15px, width=15px /> OSM": osm
+        };
+        var overlayMaps = {
+            "<img src='https://cdn-icons.flaticon.com/png/512/2072/premium/2072130.png?token=exp=1654635590~hmac=0debb4932d50fdeb4f9f82cfe1f445f6' height=15px, width=15px /> Paises": paises,
+            "<img src='https://cdn-icons-png.flaticon.com/512/993/993854.png' height=15px, width=15px /> Departamentos": departamentos,
+            "<img src='https://cdn-icons.flaticon.com/png/512/1823/premium/1823951.png?token=exp=1654641156~hmac=8edcdf9d56fab63cc6168b6214fdb202' height=15px, width=15px/> Ciudades": ciudades,
+        };
+
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+
+	</script>
+</body>
+
+</html>
